@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # ## IMPORTING LIBRARIES ###
 
 # standard Python libraries
@@ -28,7 +29,7 @@ from lp_program.lp_opt import *
 import pulp as p
 
 
-### DEFINING CACHED FUNCTIONS ###
+# ## DEFINING CACHED FUNCTIONS ###
 
 @st.cache
 def load_file(filename):
@@ -43,7 +44,7 @@ def load_file(filename):
         return file
 
 
-### INITIAL DASHBOARD LAYOUT AND ADDING SESSION STATE ###
+# ## INITIAL DASHBOARD LAYOUT AND ADDING SESSION STATE ###
 
 st.title('Sika R&D Stixall Dynamic Formulation Dashboard')
 
@@ -75,13 +76,13 @@ with st.beta_expander('Upload raw material cost data'):
     nan_cols = [col for col in data if data[col].isnull().sum() != 0]
     #data = data[non_nan_cols]
     avaliable_rms = True
-    
+
     
 
-### SELECT VARIABLES ###
+# ## SELECT VARIABLES ###
 
 with st.beta_expander('Unavailable Raw Materials'):
-     
+
 #     rm_select_container = st.beta_container() #for select all button and multiselect
 #     constants = ['VCRAYVALLACSLT', 'VOMNYA5ML', 'VHAKUENKACCRS', 'VXL10', 'XTITAN2', 'VCAT850', 'VDIDP']
 #     unavailable_rms_options = [rm for rm in non_nan_cols if rm not in constants]
@@ -92,16 +93,16 @@ with st.beta_expander('Unavailable Raw Materials'):
 if 'VSHI4BTF' in unavailable_rms and 'VPOLSHI17C' in unavailable_rms and 'VSTPE10' in unavailable_rms and 'VSPUR1015LM' in unavailable_rms:
     st.warning('At least one polymer must be available for optimisation to proceed.')
     st.stop()
-    
+
 if 'VAMMO' in unavailable_rms and 'VDAMO' in unavailable_rms:
     st.warning('At least one aminosilane must be available for optimisation to proceed.')
     st.stop()
-    
+
 if 'XDINP' in unavailable_rms and 'VDINCH' in unavailable_rms:
     st.warning('At least one plasticiser must be available for optimisation to proceed.')
     st.stop()    
 
-### CONSTRAINTS DICTIONARY ###
+# ## CONSTRAINTS DICTIONARY ###
 
 data = data.astype(float)
 
@@ -212,12 +213,12 @@ with st.beta_expander('Raw material conditions'):
         
         for lizt in constraints_lists:
             lizt.append({val*0.01*new_dict[rm]:(sign, [rm])})
-            
+
 #         constraints_list1.append({val*0.01*new_dict[rm]:(sign, [rm])})
 #         constraints_list2.append({val*0.01*new_dict[rm]:(sign, [rm])})
 #         constraints_list3.append({val*0.01*new_dict[rm]:(sign, [rm])})
 #         constraints_list4.append({val*0.01*new_dict[rm]:(sign, [rm])})
-         
+
 button = st.button(label = 'Generate optimised solution')
 if button:
     st.session_state['button variable'] = True
@@ -232,7 +233,7 @@ if st.session_state['button variable']:
     standard_df = standard_df.drop(['Cost difference compared to standard per kg (£)', 'Total Cost (£)'], axis = 1)
     standard_df = standard_df.fillna(0)
     standard_cost = standard_df['Cost per kg (£)'].loc['Standard']
-    
+
 ### Point Values ###        
     stp_data = pd.read_csv('Point formulations.csv')
     stp_data = stp_data.rename(columns = {'Unnamed: 0':'Formulation'})
@@ -407,21 +408,21 @@ if st.session_state['button variable']:
 #             final_df
 
     
+
     
+
     
+
     
+
     
+
     
+
     
+
     
-    
-    
-    
-    
-    
-    
-    
-    
+
 #     st.header('Data processing')
 
 #     # choosing and cleaning categorical variables
@@ -522,24 +523,24 @@ if st.session_state['button variable']:
 
 #     if st.session_state['modelling_init'] and not st.session_state['modelling_finish']:
 # #         st.text('Model fitting initialised')
-        
+
 #         model_search = fit_model(model_name = model_name, model_string = model_string, data = data,
 #                                   independent_variables = independent_variables, dependent_variable = dependent_variable,
 #                                   train_test_ratio = train_test_ratio, kfoldv = kfoldv, gridsearch_time_limit = gridsearch_time_limit,
 #                                   refit_time_limit = refit_time_limit, stratify = stratify)
-        
+
 #         st.session_state ['modelling_finish'] = True
-        
+
 #         try:
 #             st.session_state['model'] = model_search.best_model
 #             st.session_state['model_search'] = model_search
 #             st.success('Model fitting complete')
-            
+
 #         except Exception as e:
 #             'No acceptable model found. Please try increasing the time limits or select a different model: ' + str(e)
-            
+
 #     if st.session_state['model'] is not None:
-        
+
 #         ### MODEL ANALYSIS ###
 
 #         st.header('Model analysis')
