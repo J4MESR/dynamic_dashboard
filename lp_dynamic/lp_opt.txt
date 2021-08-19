@@ -1,0 +1,96 @@
+import pandas as pd
+import numpy as np
+import pulp as p
+
+### Functions ###
+
+class optimiser:
+    def __init__(self, formulations, rm_costs):
+        self.formulations = formulations
+        self.rm_costs = rm_costs
+        
+    def formulation_opt (self):
+
+        rms = list(self.formulations.columns)[0:-1] 
+        combined_df = self.formulations.copy()
+
+        combined_df = combined_df.rename(columns = {'Batch Size':'Batch Size (kg)'})
+
+        for i in rms:
+             combined_df[str(i)] = combined_df[str(i)]*list(self.rm_costs[str(i)]) #can't just be multiplied by df column
+
+        combined_df['Total Cost (£)'] = combined_df[rms].sum(axis = 1)
+        combined_df['Cost per kg (£)'] = combined_df['Total Cost (£)']/combined_df['Batch Size (kg)']
+
+        for i in rms:
+            combined_df[str(i)] = self.formulations[str(i)]
+
+        self.rm_costs = self.rm_costs.rename(columns = {'Cost per kg':'Cost per kg (£)'})
+
+        nan_costs = list(self.rm_costs.T[np.isnan(self.rm_costs.T['Cost per kg'])].index)
+        filtered_df = combined_df.copy()
+
+        for i in nan_costs:
+            filtered_df = filtered_df[filtered_df[i] == 0]
+        filtered_rms = list(filtered_df.columns)[0:-3]    
+
+        for i in filtered_rms:
+            filtered_df[str(i)] = self.formulations[str(i)]
+
+    #     standard_cost_per_batch = filtered_df.iloc[0,-2]
+    #     filtered_df ['Cost reduction compared to standard per batch'] = combined_df['Total Cost (£)'] - standard_cost_per_batch
+
+        standard_cost_per_kg = filtered_df.iloc[0,-1]
+        filtered_df['Cost difference compared to standard per kg (£)'] = combined_df['Cost per kg (£)'] - standard_cost_per_kg
+        filtered_df = filtered_df.sort_values(by = 'Cost per kg (£)', ascending = True)
+        
+        ### Remove zero columns (optional) ###
+    # filtered_df = filtered_df.replace(0,np.NaN).dropna(how = 'all', axis = 1).replace(np.NaN,0)
+
+#         final_frame = pd.DataFrame(data = filtered_df.iloc[0])
+#         final_frame = final_frame[(final_frame.T != 0).any()]
+
+#         return final_frame
+        return filtered_df
+
+def stp_lp_optimiser(constants_weights:dict, decision_variables:list, costs:dict, constraints_list:list = None):
+
+#     constants = {'VCRAYVALLACSLT': 19.5, 'VOMNYA5ML': 260, 'VHAKUENKACCRS': 780, 'VXL10': 65.0, 
+#                  'XTITAN2': 13.0, 'VCAT850': 3.3, 'VDIDP': 29.3, 'VAMMO': 17.9, 'XDINP': 241.8}
+
+#     decision_variables = ['VSHI4BTF', 'VPOLSHI17C', 'VSTPE10', 'VSPUR1015LM']
+
+    decision_vars = p.LpVariable.dicts('decision',decision_variables,lowBound=0,cat='Continuous')
+
+    problem = p.LpProblem('dynamic_formulation_problem', p.LpMinimize)
+    problem += p.lpSum([costs[i]*decision_vars[i] for i in decision_variables])
+    for constraint_dict in constraints_list:
+        for key, (sign, var) in constraint_dict.items():
+            if sign == '=':
+                problem += sum([decision_vars[i] for i in var]) == key
+            elif sign == '<=' or sign == '=<':
+                problem += sum([decision_vars[i] for i in var]) <= key
+            elif sign == '>=' or sign == '=>':
+                problem += sum([decision_vars[i] for i in var]) >= key
+            
+#     problem += decision_vars['VSHI4BTF'] + decision_vars['VPOLSHI17C'] + decision_vars['VSTPE10'] + decision_vars['VSPUR1015LM'] == 356.7
+#     problem += decision_vars['VSHI4BTF'] <= 237.8
+    #print(problem)
+    problem.solve()
+    # print(p.value(problem.objective))
+    # for v in problem.variables():
+    #     print(v.name, "=", v.varValue)
+
+    total_cost1 = p.value(problem.objective) + sum([constants_weights[i]*costs[i] for i in constants_weights]) #total cost of batch
+    total_mass1 = sum([v.varValue for v in problem.variables()]) + sum(constants_weights.values()) #total mass of batch
+    cost_per_unit1 = total_cost1/total_mass1
+    cost_per_unit1
+
+    polymers1 = pd.Series([v.varValue for v in problem.variables()], index = [v.name for v in problem.variables()])
+    polymers1 = pd.DataFrame(polymers1, columns=['LP1'])
+    constraints1 = pd.DataFrame.from_dict(constants_weights, orient='index', columns=['LP1'])
+    lp1frame = pd.concat([polymers1, constraints1], axis =0).T
+    lp1frame['Batch Size (kg)'] = total_mass1
+    lp1frame['Cost per kg (£)'] = cost_per_unit1
+    lp1frame = lp1frame.rename(columns = {'decision_VPOLSHI17C':'VPOLSHI17C'}).rename(columns = {'decision_VSHI4BTF':'VSHI4BTF'}).rename(columns = {'decision_VSPUR1015LM':'VSPUR1015LM'}).rename(columns = {'decision_VSTPE10':'VSTPE10'})
+    return lp1frame
